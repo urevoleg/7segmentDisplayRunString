@@ -32,7 +32,7 @@ unsigned long lastUpdateClock = 0;
 unsigned long lastUpdateTemp = 0;
 unsigned long lastUpdateDot = 0;
 int digitMass[] = {1, 5, 3, 7};          // 3 разряд - 2 разряд -  1 разр - 0 разр
-byte sizeDigitMass = sizeof(digitMass) / sizeof(int);
+int sizeDigitMass = sizeof(digitMass) / sizeof(int);
 /*
    Строку необходимо набрать
    Например (полный вариант):
@@ -52,8 +52,8 @@ byte sizeDigitMass = sizeof(digitMass) / sizeof(int);
    3 = десятые доли градусов температуры
    4 = символ градусов Цельсия "С"
 */
-int digitMassRun[] = {2, 6, 7, 103};       //
-byte sizeRuningMass = sizeof(digitMassRun) / sizeof(int);
+int digitMassRun[] = {2, 6, 7, 103, 999, 1, 7, 2, 3, 999, 2, 6, 104, 105, 103, 999, 2, 0, 1, 8};
+int sizeRuningMass = sizeof(digitMassRun) / sizeof(int);
 int speedRunMass = 350;
 
 int dsHour = 21;
@@ -90,6 +90,9 @@ void setup() {
   lastUpdateClock = millis();
   lastUpdateDot = millis();
   Serial.begin(115200);
+  Serial.println("sizeRuningMass: " + String(sizeRuningMass));
+  Serial.println("sizeDigitMass: " + String(sizeDigitMass));
+  Serial.println("Half: " + String((sizeDigitMass + sizeRuningMass) / 2 + 1));
 }
 
 void loop() {
@@ -192,7 +195,8 @@ void loop() {
   }
   // бегущая текстовая(цифровая) строка
   // запускаем цикл по элементам бегущей строки (от 0 до кол-ва разрядов + размер бег. строки)
-  for (int simbol = 0; simbol < sizeRuningMass + sizeDigitMass; simbol++) {
+  for (int simbol = 0; simbol < sizeRuningMass + sizeDigitMass ; simbol++) {
+    //Serial.print("simbol: "); Serial.println(simbol);
     zapolnenieDigitMass(simbol);                                // присваиваем элементам отображаемого массива значения из массива бегущей строки
     lastUpdateRun = millis();                                   // обновляем таймер отображения текущих элементов
     while (millis() - lastUpdateRun <= speedRunMass) {          // запускаем таймер отображения текущих элементов
@@ -217,32 +221,86 @@ void loop() {
 }
 
 // функция заполнения массива отображаемых элементов
-void zapolnenieDigitMass(byte pos) {
+void zapolnenieDigitMass(int pos) {
+  // нулевая позиция = на дисплее пусто
   if (pos == 0) {
     for (int i = 0; i < sizeDigitMass; i++) {
       digitMass[i] = 999;
     }
   }
-  else if (pos < (sizeDigitMass + sizeRunMass) / 2 + 1) {
+  if (pos < 4 and pos > 0) {
     for (int i = 0; i < pos; i++) {
-      digitMass[sizeDigitMass - pos - i] = digitMassRun[i];
+      digitMass[sizeDigitMass - 1 - i] = digitMassRun[pos - 1 - i];
     }
-    for (int i = pos; i < sizeDigitMass - 1; i++) {
+    /*digitMass[3] = digitMassRun[0]; //i=0 pos=1 pos-1=0
+      digitMass[3] = digitMassRun[1]; //i=1   pos=2 pos-1=1
+      digitMass[2] = digitMassRun[0];
+      digitMass[3] = digitMassRun[2]; //i=2   pos=3 pos-1=2
+      digitMass[2] = digitMassRun[1];
+      digitMass[1] = digitMassRun[0];*/
+    for (int i = pos + 1; i < sizeDigitMass - 1; i++) {
       digitMass[i] = 999;
     }
   }
-  switch (pos) {
-    /*case 0:
+  // позиция с 1 по 4 (точнее с 1 до (размер массива вывода + размер массива бег строки)/2)
+  if (pos <= sizeRuningMass and pos >= 4) {
+    for (int i = 0; i < 4; i++) {
+      //Serial.print("digitMass["); Serial.print(sizeDigitMass - 1 - i); Serial.print("]");
+      //Serial.print(" = digitMassRun["); Serial.print(pos - 1 - i); Serial.print("]"); Serial.println();
+      digitMass[sizeDigitMass - 1 - i] = digitMassRun[sizeDigitMass - 1 - i + pos - sizeDigitMass];
+    }
+    for (int i = pos + 1; i < sizeDigitMass - 1; i++) {
+      digitMass[i] = 999;
+    }
+  }
+  if (pos > sizeRuningMass) {
+    for (int i = pos - sizeRuningMass; i < sizeDigitMass; i++) {
+      digitMass[i - (pos - sizeRuningMass)] = digitMassRun[sizeRuningMass - sizeDigitMass + i];
+    }
+    /*digitMass[0] = digitMassRun[14]; //i=2 pos=18 3
+      digitMass[1] = digitMassRun[14]; //i=1 pos=17 2
+      digitMass[0] = digitMassRun[13];
+      digitMass[2] = digitMassRun[14]; //i=0 pos=16 1
+      digitMass[1] = digitMassRun[13];
+      digitMass[0] = digitMassRun[12];*/
+    for (int i = 0; i < pos - sizeRuningMass; i++) {
+      digitMass[3 - i] = 999;
+    }
+  }
+
+  // позиция с (размер массива вывода + размер массива бег строки)/2 + 1 до (размер массива вывода + размер массива бег строки) (с 5 до 7)
+  /*else {
+
+    Serial.print("pos\t"); Serial.println(pos);
+    for (int i = sizeRuningMass - 1 - pos; i < sizeDigitMass; i++) {
+      Serial.print("i\t"); Serial.print(i); Serial.print("\ti-(pos-sizeDigitMass)\t"); Serial.print(i - (pos - sizeDigitMass)); Serial.println();
+      digitMass[i - (sizeRuningMass - 1 - pos)] = digitMassRun[i];
+    }
+
+    for (int i = 0; i < sizeRuningMass - 1 - pos; i++) {
+      digitMass[3 - i] = 999;
+    }
+    }*/
+  /*else {
+    for (int i = pos - sizeDigitMass; i < sizeRuningMass; i++) {
+      digitMass[i - (pos - sizeDigitMass)] = digitMassRun[i];
+    }
+    for (int i = 0; i < pos - sizeRuningMass; i++) {
+      digitMass[3 - i] = 999;
+    }
+    }*/
+  /*switch (pos) {
+    case 0:
       for (int i = 0; i < sizeDigitMass; i++) {
         digitMass[i] = 999;
       }
-      break;*/
-    /*case 1:
+      break;
+    case 1:
       digitMass[sizeDigitMass - 1] = digitMassRun[pos - 1];
       for (int i = pos; i < sizeDigitMass - 1; i++) {
         digitMass[i] = 999;
       }
-      break;*/
+      break;
     case 2:
       digitMass[sizeDigitMass - 1] = digitMassRun[pos - 1];
       digitMass[sizeDigitMass - 1 - 1] = digitMassRun[pos - 1 - 1];
@@ -285,7 +343,7 @@ void zapolnenieDigitMass(byte pos) {
         digitMass[3 - i] = 999;
       }
       break;
-  }
+    }*/
 }
 
 int readTemp() {
@@ -450,7 +508,7 @@ void simbol_D() {
   digitalWrite(d, HIGH);
   digitalWrite(e, HIGH);
   digitalWrite(f, LOW);
-  digitalWrite(g, LOW);
+  digitalWrite(g, HIGH);
 }
 
 void simbol_E() {
@@ -614,6 +672,12 @@ void digit(int d) {
       break;
     case 103:
       simbol_C();
+      break;
+    case 104:
+      simbol_D();
+      break;
+    case 105:
+      simbol_E();
       break;
     case 999:
       nul();
